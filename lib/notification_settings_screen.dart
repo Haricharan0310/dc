@@ -20,6 +20,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Set the background color to white
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

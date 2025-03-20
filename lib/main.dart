@@ -15,7 +15,49 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      home: const SplashScreen(), // Set SplashScreen as the initial screen
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color.fromARGB(255, 168, 243, 246), // Set default background color to white
+      ),
+    );
+  }
+}
+
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    });
+
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1A3A72), Color(0x59ADB0)], // Gradient with #163560
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.flash_on, size: 100, color: Colors.white), // Example icon
+              SizedBox(height: 20),
+              Text(
+                "Power Monitor",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -45,6 +87,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Set the background color to pure white
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -56,19 +99,26 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          selectedItemColor: Colors.blue,
-          unselectedItemColor: Colors.grey,
-          onTap: _onItemTapped,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-            BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notification"),
-            BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-          ],
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16), // Rounded corner on the top-left
+            topRight: Radius.circular(16), // Rounded corner on the top-right
+          ),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.white, // Set navigation bar color to white
+            currentIndex: _selectedIndex,
+            selectedItemColor: Colors.black,
+            unselectedItemColor: Colors.grey,
+            onTap: _onItemTapped,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+              BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notification"),
+              BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+            ],
+          ),
         ),
       ),
-      body: _widgetOptions.elementAt(_selectedIndex),
+      body: _widgetOptions.elementAt(_selectedIndex), // Ensure child widgets have white backgrounds
     );
   }
 }
@@ -103,7 +153,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final month = now.month.toString().padLeft(2, '0');
     final year = now.year.toString();
     final weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.weekday - 1];
-    return "$weekday, $day/$month/$year";
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    return "$weekday, $day/$month/$year - $hour:$minute";
   }
 
   @override
@@ -148,55 +200,49 @@ class DashboardScreenContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 40), // Add space at the top
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Hi Charlie", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text(currentDate, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-                ],
-              ),
-              // Comment out the switch
-              // Switch(
-              //   value: isMainElectricity,
-              //   onChanged: (value) {
-              //     setState(() {
-              //       isMainElectricity = value;
-              //     });
-              //   },
-              // )
-            ],
-          ),
-          const SizedBox(height: 20),
-          SolarPowerCard(
-            value: solarPowerUsage,
-            percentage: 40,
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+    return Container(
+      color: Colors.white, // Explicitly set the background color to white
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 40), // Add space at the top
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                InfoCard(title: "Total energy", value: totalEnergy, icon: Icons.lightbulb),
-                InfoCard(title: "Consumed", value: consumed, icon: Icons.refresh),
-                InfoCard(title: "Capacity", value: capacity, icon: Icons.storage),
-                InfoCard(title: "Pyranometer", value: pyranometer, icon: Icons.loop),
-                InfoCard(title: "Temperature", value: temperature, icon: Icons.thermostat),
-                InfoCard(title: "Efficiency", value: efficiency, icon: Icons.show_chart_outlined),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Hi Charlie", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    Text(currentDate, style: const TextStyle(fontSize: 16, color: Colors.grey)), // Display date and time
+                  ],
+                ),
               ],
             ),
-          )
-        ],
+            const SizedBox(height: 20),
+            SolarPowerCard(
+              value: solarPowerUsage,
+              percentage: 40,
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                children: [
+                  InfoCard(title: "Total energy", value: totalEnergy, icon: Icons.lightbulb),
+                  InfoCard(title: "Consumed", value: consumed, icon: Icons.refresh),
+                  InfoCard(title: "Capacity", value: capacity, icon: Icons.storage),
+                  InfoCard(title: "Pyranometer", value: pyranometer, icon: Icons.loop),
+                  InfoCard(title: "Temperature", value: temperature, icon: Icons.thermostat),
+                  InfoCard(title: "Efficiency", value: efficiency, icon: Icons.show_chart_outlined),
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
