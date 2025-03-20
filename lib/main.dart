@@ -3,6 +3,8 @@ import 'solar_power_card.dart';
 import 'info_card.dart';
 import 'notification_settings_screen.dart';
 import 'settings_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -132,12 +134,17 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   double solarPowerUsage = 0.0;
-  double totalEnergy = 0.0;
-  double consumed = 0.0;
-  double capacity = 0.0;
+  double acEnergy = 0.0; // Renamed from totalEnergy
+  double acVoltage = 0.0; // Renamed from consumed
+  double dcLinkVoltage = 0.0; // Renamed from capacity
   double pyranometer = 0.0;
   double temperature = 0.0;
-  double efficiency = 0.0;
+  double powerFactor = 0.0; // Renamed from efficiency
+  double energyToday = 0.0; // State for Energy Today
+  double outputCurrent = 0.0; // State for Output Current
+  double totalEnergy = 0.0; // State for Total Energy
+  double outputPower = 0.0; // State for Output Power
+  double dcCurrent = 0.0; // New state for DC Current
   bool isMainElectricity = false;
   String currentDate = "";
 
@@ -145,29 +152,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     currentDate = _getCurrentDate();
+
+    // Use the formatted date and time for the API call
+    fetchForecastData(currentDate);
+  }
+
+  Future<void> fetchForecastData(String dateTime) async {
+    final url = Uri.parse('https://brilliant-pet-dc-generator-564a35fd.koyeb.app/forecast');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'forecast_date': dateTime}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Update state variables with the response data
+        setState(() {
+          solarPowerUsage = data['predicted_dc_power'] ?? 0.0; // Predicted DC Power
+          acEnergy = data['features']['Energy today'] ?? 0.0; // Energy Today
+          acVoltage = data['features']['AC voltage'] ?? 0.0; // AC Voltage
+          dcLinkVoltage = data['features']['DCLink Voltage'] ?? 0.0; // DCLink Voltage
+          pyranometer = data['features']['Pyranometer'] ?? 0.0; // Pyranometer
+          temperature = data['features']['Temperature'] ?? 0.0; // Temperature
+          powerFactor = data['features']['Power Factor'] ?? 0.0; // Power Factor
+          energyToday = data['features']['Energy today'] ?? 0.0; // Energy Today
+          outputCurrent = data['features']['Output current'] ?? 0.0; // Output Current
+          totalEnergy = data['features']['Total Energy'] ?? 0.0; // Total Energy
+          outputPower = data['features']['output power'] ?? 0.0; // Output Power
+          dcCurrent = data['features']['DC Current'] ?? 0.0; // DC Current
+        });
+      } else {
+        throw Exception('Failed to fetch forecast data: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching forecast data: $e');
+    }
   }
 
   String _getCurrentDate() {
     final now = DateTime.now();
-    final day = now.day.toString().padLeft(2, '0');
-    final month = now.month.toString().padLeft(2, '0');
     final year = now.year.toString();
-    final weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.weekday - 1];
-    final hour = now.hour.toString().padLeft(2, '0');
-    final minute = now.minute.toString().padLeft(2, '0');
-    return "$weekday, $day/$month/$year - $hour:$minute";
+    final month = now.month.toString().padLeft(2, '0'); // Ensure 2-digit month
+    final day = now.day.toString().padLeft(2, '0'); // Ensure 2-digit day
+    final hour = now.hour.toString().padLeft(2, '0'); // Ensure 2-digit hour
+    final minute = now.minute.toString().padLeft(2, '0'); // Ensure 2-digit minute
+    final second = now.second.toString().padLeft(2, '0'); // Ensure 2-digit second
+
+    // Return the formatted date and time
+    return "$year-$month-$day $hour:$minute:$second";
   }
 
   @override
   Widget build(BuildContext context) {
     return DashboardScreenContent(
       solarPowerUsage: solarPowerUsage,
-      totalEnergy: totalEnergy,
-      consumed: consumed,
-      capacity: capacity,
+      acEnergy: acEnergy,
+      acVoltage: acVoltage,
+      dcLinkVoltage: dcLinkVoltage,
       pyranometer: pyranometer,
       temperature: temperature,
-      efficiency: efficiency,
+      powerFactor: powerFactor,
+      energyToday: energyToday,
+      outputCurrent: outputCurrent,
+      totalEnergy: totalEnergy,
+      outputPower: outputPower,
+      dcCurrent: dcCurrent, // Pass the new state
       isMainElectricity: isMainElectricity,
       currentDate: currentDate,
     );
@@ -176,24 +229,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class DashboardScreenContent extends StatelessWidget {
   final double solarPowerUsage;
-  final double totalEnergy;
-  final double consumed;
-  final double capacity;
+  final double acEnergy; // Renamed from totalEnergy
+  final double acVoltage; // Renamed from consumed
+  final double dcLinkVoltage; // Renamed from capacity
   final double pyranometer;
   final double temperature;
-  final double efficiency;
+  final double powerFactor; // Renamed from efficiency
+  final double energyToday; // New parameter for Energy Today
+  final double outputCurrent; // New parameter for Output Current
+  final double totalEnergy; // New parameter for Total Energy
+  final double outputPower; // New parameter for Output Power
+  final double dcCurrent; // New parameter for DC Current
   final bool isMainElectricity;
   final String currentDate;
 
   const DashboardScreenContent({
     super.key,
     required this.solarPowerUsage,
-    required this.totalEnergy,
-    required this.consumed,
-    required this.capacity,
+    required this.acEnergy, // Updated parameter
+    required this.acVoltage, // Updated parameter
+    required this.dcLinkVoltage, // Updated parameter
     required this.pyranometer,
     required this.temperature,
-    required this.efficiency,
+    required this.powerFactor, // Updated parameter
+    required this.energyToday, // New parameter
+    required this.outputCurrent, // New parameter
+    required this.totalEnergy, // New parameter
+    required this.outputPower, // New parameter
+    required this.dcCurrent, // New parameter
     required this.isMainElectricity,
     required this.currentDate,
   });
@@ -232,12 +295,17 @@ class DashboardScreenContent extends StatelessWidget {
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
                 children: [
-                  InfoCard(title: "Total energy", value: totalEnergy, icon: Icons.lightbulb),
-                  InfoCard(title: "Consumed", value: consumed, icon: Icons.refresh),
-                  InfoCard(title: "Capacity", value: capacity, icon: Icons.storage),
-                  InfoCard(title: "Pyranometer", value: pyranometer, icon: Icons.loop),
+                  InfoCard(title: "Predicted DC Power", value: solarPowerUsage, icon: Icons.flash_on),
+                  InfoCard(title: "AC Voltage", value: acVoltage, icon: Icons.electrical_services),
+                  InfoCard(title: "DCLink Voltage", value: dcLinkVoltage, icon: Icons.battery_charging_full),
+                  InfoCard(title: "Energy Today", value: energyToday, icon: Icons.bolt),
+                  InfoCard(title: "Output Current", value: outputCurrent, icon: Icons.electrical_services),
+                  InfoCard(title: "Total Energy", value: totalEnergy, icon: Icons.battery_full),
+                  InfoCard(title: "Output Power", value: outputPower, icon: Icons.power),
+                  InfoCard(title: "DC Current", value: dcCurrent, icon: Icons.flash_on),
+                  InfoCard(title: "Pyranometer", value: pyranometer, icon: Icons.wb_sunny),
                   InfoCard(title: "Temperature", value: temperature, icon: Icons.thermostat),
-                  InfoCard(title: "Efficiency", value: efficiency, icon: Icons.show_chart_outlined),
+                  InfoCard(title: "Power Factor", value: powerFactor, icon: Icons.show_chart),
                 ],
               ),
             )
