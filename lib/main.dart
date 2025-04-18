@@ -5,6 +5,7 @@ import 'notification_settings_screen.dart';
 import 'settings_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:async'; // Import the Timer class
 
 void main() {
   runApp(const MyApp());
@@ -41,7 +42,7 @@ class SplashScreen extends StatelessWidget {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF1A3A72), Color(0x59ADB0)], // Gradient with #163560
+            colors: [Color(0xFF1A3A72), Color(0x0059adb0)], // Gradient with #163560
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -92,6 +93,11 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white, // Set the background color to pure white
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16), // Rounded corner on the top-left
+            topRight: Radius.circular(16), // Rounded corner on the top-right
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -134,30 +140,50 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   double solarPowerUsage = 0.0;
-  double acEnergy = 0.0; // Renamed from totalEnergy
-  double acVoltage = 0.0; // Renamed from consumed
-  double dcLinkVoltage = 0.0; // Renamed from capacity
+  double acEnergy = 0.0;
+  double acVoltage = 0.0;
+  double dcLinkVoltage = 0.0;
   double pyranometer = 0.0;
   double temperature = 0.0;
-  double powerFactor = 0.0; // Renamed from efficiency
-  double energyToday = 0.0; // State for Energy Today
-  double outputCurrent = 0.0; // State for Output Current
-  double totalEnergy = 0.0; // State for Total Energy
-  double outputPower = 0.0; // State for Output Power
-  double dcCurrent = 0.0; // New state for DC Current
+  double powerFactor = 0.0;
+  double energyToday = 0.0;
+  double outputCurrent = 0.0;
+  double totalEnergy = 0.0;
+  double outputPower = 0.0;
+  double dcCurrent = 0.0;
   bool isMainElectricity = false;
   String currentDate = "";
+  bool isLoading = false; // Track loading state
+  Timer? _timer; // Timer to periodically update the time
 
   @override
   void initState() {
     super.initState();
     currentDate = _getCurrentDate();
+    _startTimer(); // Start the timer to update the time
+    fetchForecastData(currentDate); // Fetch initial data
+  }
 
-    // Use the formatted date and time for the API call
-    fetchForecastData(currentDate);
+  @override
+  void dispose() {
+    _timer?.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        currentDate = _getCurrentDate(); // Update the current date every second
+        print("Updated currentDate: $currentDate"); // Debugging: Print the updated date
+      });
+    });
   }
 
   Future<void> fetchForecastData(String dateTime) async {
+    setState(() {
+      isLoading = true; // Start loading animation
+    });
+
     final url = Uri.parse('https://brilliant-pet-dc-generator-564a35fd.koyeb.app/forecast');
 
     try {
@@ -170,59 +196,83 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Update state variables with the response data
         setState(() {
-          solarPowerUsage = data['predicted_dc_power'] ?? 0.0; // Predicted DC Power
-          acEnergy = data['features']['Energy today'] ?? 0.0; // Energy Today
-          acVoltage = data['features']['AC voltage'] ?? 0.0; // AC Voltage
-          dcLinkVoltage = data['features']['DCLink Voltage'] ?? 0.0; // DCLink Voltage
-          pyranometer = data['features']['Pyranometer'] ?? 0.0; // Pyranometer
-          temperature = data['features']['Temperature'] ?? 0.0; // Temperature
-          powerFactor = data['features']['Power Factor'] ?? 0.0; // Power Factor
-          energyToday = data['features']['Energy today'] ?? 0.0; // Energy Today
-          outputCurrent = data['features']['Output current'] ?? 0.0; // Output Current
-          totalEnergy = data['features']['Total Energy'] ?? 0.0; // Total Energy
-          outputPower = data['features']['output power'] ?? 0.0; // Output Power
-          dcCurrent = data['features']['DC Current'] ?? 0.0; // DC Current
+          solarPowerUsage = data['predicted_dc_power'] ?? 0.0;
+          acEnergy = data['features']['Energy today'] ?? 0.0;
+          acVoltage = data['features']['AC voltage'] ?? 0.0;
+          dcLinkVoltage = data['features']['DCLink Voltage'] ?? 0.0;
+          pyranometer = data['features']['Pyranometer'] ?? 0.0;
+          temperature = data['features']['Temperature'] ?? 0.0;
+          powerFactor = data['features']['Power Factor'] ?? 0.0;
+          energyToday = data['features']['Energy today'] ?? 0.0;
+          outputCurrent = data['features']['Output current'] ?? 0.0;
+          totalEnergy = data['features']['Total Energy'] ?? 0.0;
+          outputPower = data['features']['output power'] ?? 0.0;
+          dcCurrent = data['features']['DC Current'] ?? 0.0;
         });
       } else {
-        throw Exception('Failed to fetch forecast data: ${response.statusCode}');
+        print('Failed to fetch forecast data: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching forecast data: $e');
+    } finally {
+      setState(() {
+        isLoading = false; // Stop loading animation
+      });
     }
   }
 
   String _getCurrentDate() {
     final now = DateTime.now();
     final year = now.year.toString();
-    final month = now.month.toString().padLeft(2, '0'); // Ensure 2-digit month
-    final day = now.day.toString().padLeft(2, '0'); // Ensure 2-digit day
-    final hour = now.hour.toString().padLeft(2, '0'); // Ensure 2-digit hour
-    final minute = now.minute.toString().padLeft(2, '0'); // Ensure 2-digit minute
-    final second = now.second.toString().padLeft(2, '0'); // Ensure 2-digit second
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    final second = now.second.toString().padLeft(2, '0');
 
-    // Return the formatted date and time
     return "$year-$month-$day $hour:$minute:$second";
   }
 
   @override
   Widget build(BuildContext context) {
-    return DashboardScreenContent(
-      solarPowerUsage: solarPowerUsage,
-      acEnergy: acEnergy,
-      acVoltage: acVoltage,
-      dcLinkVoltage: dcLinkVoltage,
-      pyranometer: pyranometer,
-      temperature: temperature,
-      powerFactor: powerFactor,
-      energyToday: energyToday,
-      outputCurrent: outputCurrent,
-      totalEnergy: totalEnergy,
-      outputPower: outputPower,
-      dcCurrent: dcCurrent, // Pass the new state
-      isMainElectricity: isMainElectricity,
-      currentDate: currentDate,
+    return Scaffold(
+    
+      body: Stack(
+        children: [
+          DashboardScreenContent(
+            solarPowerUsage: solarPowerUsage,
+            acEnergy: acEnergy,
+            acVoltage: acVoltage,
+            dcLinkVoltage: dcLinkVoltage,
+            pyranometer: pyranometer,
+            temperature: temperature,
+            powerFactor: powerFactor,
+            energyToday: energyToday,
+            outputCurrent: outputCurrent,
+            totalEnergy: totalEnergy,
+            outputPower: outputPower,
+            dcCurrent: dcCurrent,
+            isMainElectricity: isMainElectricity,
+            currentDate: currentDate, // Pass the updated currentDate
+          ),
+          if (isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5), // Semi-transparent overlay
+              child: const Center(
+                child: CircularProgressIndicator(), // Loading spinner
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          fetchForecastData(currentDate); // Fetch backend data when pressed
+        },
+        child: const Icon(Icons.refresh),
+        tooltip: 'Refresh Data',
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat, // Align closer to the navigation bar
     );
   }
 }
@@ -277,7 +327,7 @@ class DashboardScreenContent extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Hi Charlie", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    const Text("Hi Ravi", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                     Text(currentDate, style: const TextStyle(fontSize: 16, color: Colors.grey)), // Display date and time
                   ],
                 ),
@@ -285,17 +335,17 @@ class DashboardScreenContent extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             SolarPowerCard(
-              value: solarPowerUsage,
-              percentage: 40,
+              value: solarPowerUsage.abs(),
+             // percentage: 40,
             ),
             const SizedBox(height: 20),
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
                 crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
+                mainAxisSpacing: 15,
                 children: [
-                  InfoCard(title: "Predicted DC Power", value: solarPowerUsage, icon: Icons.flash_on),
+                  InfoCard(title: "Predicted DC Power", value: solarPowerUsage.abs(), icon: Icons.flash_on),
                   InfoCard(title: "AC Voltage", value: acVoltage, icon: Icons.electrical_services),
                   InfoCard(title: "DCLink Voltage", value: dcLinkVoltage, icon: Icons.battery_charging_full),
                   InfoCard(title: "Energy Today", value: energyToday, icon: Icons.bolt),
@@ -315,3 +365,7 @@ class DashboardScreenContent extends StatelessWidget {
     );
   }
 }
+
+// To export the app as an APK, run the following command in the terminal:
+// flutter build apk --release
+// This will generate the APK file in the build/app/outputs/flutter-apk/ directory.
